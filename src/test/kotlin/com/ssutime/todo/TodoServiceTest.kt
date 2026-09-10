@@ -299,4 +299,64 @@ class TodoServiceTest {
         assertTrue(status.isCompleted)
         assertTrue(status.isManuallyCompleted)
     }
+
+    @Test
+    fun `processReport - 새 첨부파일 링크가 전달되면 버전을 올리지 않는 쿼리로 저장한다`() {
+        val todo = stubExistingTodoReport()
+        val links = listOf("https://canvas.ssu.ac.kr/courses/44383/files/1/download")
+        every { todoRepository.updateAttachmentLinks(any(), any()) } returns 1
+
+        reportWithLinks(links)
+
+        verify { todoRepository.updateAttachmentLinks(todo.id, Todo.joinAttachmentLinks(links)) }
+        verify(exactly = 0) { todoRepository.save(any()) }
+    }
+
+    @Test
+    fun `processReport - 첨부파일 링크 없이 제보되면 링크를 갱신하지 않는다`() {
+        stubExistingTodoReport()
+
+        reportWithLinks(null)
+
+        verify(exactly = 0) { todoRepository.updateAttachmentLinks(any(), any()) }
+    }
+
+    @Test
+    fun `processReport - 빈 첨부파일 링크는 기존 링크를 지우지 않는다`() {
+        stubExistingTodoReport().setAttachmentLinksForTest(listOf("https://canvas.ssu.ac.kr/courses/44383/files/1/download"))
+
+        reportWithLinks(emptyList())
+
+        verify(exactly = 0) { todoRepository.updateAttachmentLinks(any(), any()) }
+    }
+
+    @Test
+    fun `processReport - 기존과 같은 첨부파일 링크면 갱신 쿼리를 생략한다`() {
+        val links = listOf("https://canvas.ssu.ac.kr/courses/44383/files/1/download")
+        stubExistingTodoReport().setAttachmentLinksForTest(links)
+
+        reportWithLinks(links)
+
+        verify(exactly = 0) { todoRepository.updateAttachmentLinks(any(), any()) }
+    }
+
+    private fun stubExistingTodoReport(): Todo {
+        val todo = Todo.create(subjectId, materialCode, TodoType.ASSIGNMENT, dueDate, title)
+        every { todoReportRepository.save(any()) } returns TodoReport.create(userId, subjectId, materialCode, dueDate, title)
+        every { todoRepository.findBySubjectIdAndMaterialCode(subjectId, materialCode) } returns todo
+        every { userTodoStatusRepository.findByUserIdAndTodo(userId, todo) } returns
+            UserTodoStatus.create(userId, todo, thresholdMinutes)
+        return todo
+    }
+
+    private fun reportWithLinks(attachmentLinks: List<String>?) =
+        todoService.processReport(
+            userId,
+            subjectId,
+            materialCode,
+            TodoType.ASSIGNMENT,
+            dueDate,
+            title,
+            attachmentLinks = attachmentLinks,
+        )
 }
