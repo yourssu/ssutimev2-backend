@@ -28,6 +28,13 @@ class AssignmentContentExtractor(
         )
     }
 
+    fun extractAttachmentLinks(payload: AssignmentAnalysisPayload): List<String> =
+        htmlParser
+            .parse(payload.assignmentHtml)
+            .fileLinks
+            .filter { link -> validateCourse(payload, link) == null }
+            .map { link -> link.downloadUrl(payload.courseId) }
+
     private fun processAttachments(
         payload: AssignmentAnalysisPayload,
         parsed: ParsedAssignmentHtml,

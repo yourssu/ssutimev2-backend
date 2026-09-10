@@ -32,6 +32,7 @@ class TodoService(
         type: TodoType,
         dueDate: LocalDateTime,
         title: String,
+        attachmentLinks: List<String>? = null,
     ): Todo {
         val user =
             userRepository
@@ -61,6 +62,9 @@ class TodoService(
         val todo =
             todoRepository.findBySubjectIdAndMaterialCode(subjectId, materialCode)
                 ?: todoRepository.save(Todo.create(subjectId, materialCode, todoType, dueDate, title))
+        attachmentLinks
+            ?.takeIf { it.isNotEmpty() && it != todo.attachmentLinks }
+            ?.let { todoRepository.updateAttachmentLinks(todo.id, Todo.joinAttachmentLinks(it)) }
 
         val existingStatus = userTodoStatusRepository.findByUserIdAndTodo(userId, todo)
         val status =

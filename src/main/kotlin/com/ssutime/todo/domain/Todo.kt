@@ -45,6 +45,12 @@ class Todo private constructor(
     @Version
     var version: Long = 0
 
+    @Column(name = "attachment_links", columnDefinition = "TEXT")
+    private var attachmentLinksText: String? = null
+
+    val attachmentLinks: List<String>
+        get() = attachmentLinksText?.split(ATTACHMENT_LINK_SEPARATOR)?.filter { it.isNotBlank() }.orEmpty()
+
     fun confirm() {
         status = TodoStatus.CONFIRMED
     }
@@ -72,6 +78,15 @@ class Todo private constructor(
 
     companion object {
         private const val HALF_HOUR_MINUTES = 30
+
+        private const val ATTACHMENT_LINK_SEPARATOR = "\n"
+
+        fun joinAttachmentLinks(links: List<String>): String? {
+            require(links.all { it.isNotBlank() && ATTACHMENT_LINK_SEPARATOR !in it }) {
+                "attachment links must be single-line non-blank URLs"
+            }
+            return links.joinToString(ATTACHMENT_LINK_SEPARATOR).ifEmpty { null }
+        }
 
         fun create(
             subjectId: Long,

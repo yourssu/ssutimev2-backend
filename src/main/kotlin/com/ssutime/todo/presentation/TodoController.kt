@@ -52,13 +52,17 @@ class TodoController(
     @PostMapping("/report-with-analysis")
     @Operation(
         summary = "LMS 할 일 제보 및 과제 첨부 AI 분석 요청",
-        description = "기존 할 일 제보를 처리한 뒤 요청 범위 LMS 인증정보로 Canvas 첨부를 다운로드/추출하고 비동기 AI 분석을 예약합니다.",
+        description =
+            "기존 할 일 제보를 처리하면서 assignmentHtml의 Canvas 첨부파일 링크를 할 일에 저장하고" +
+                "(첨부 링크가 없는 제보는 기존 링크를 지우지 않습니다), " +
+                "요청 범위 LMS 인증정보로 Canvas 첨부를 다운로드/추출해 비동기 AI 분석을 예약합니다.",
     )
     fun reportWithAnalysis(
         @Parameter(hidden = true)
         @AuthenticationPrincipal userId: Long,
         @RequestBody request: TodoReportWithAnalysisRequest,
     ): ResponseEntity<AssignmentAnalysisResponse> {
+        val attachmentLinks = assignmentAnalysisPreparationService.extractAttachmentLinks(request.assignmentAnalysis)
         val todo =
             todoService.processReport(
                 userId = userId,
@@ -67,6 +71,7 @@ class TodoController(
                 type = request.type,
                 dueDate = request.dueDate,
                 title = request.title,
+                attachmentLinks = attachmentLinks,
             )
         return ResponseEntity.ok(
             assignmentAnalysisPreparationService.prepareAnalysis(
@@ -79,7 +84,9 @@ class TodoController(
     @GetMapping("/todos")
     @Operation(
         summary = "사용자 할 일 목록 조회",
-        description = "인증된 사용자의 할 일 상태를 조회합니다. 완료 여부와 알림 예정 시각 관련 필드가 포함됩니다.",
+        description =
+            "인증된 사용자의 할 일 상태를 조회합니다. 완료 여부와 알림 예정 시각 관련 필드가 포함됩니다. " +
+                "첨부파일이 있는 과제는 todo.attachmentLinks에 Canvas 첨부파일 다운로드 링크 배열이 담기며, 없으면 빈 배열입니다.",
     )
     fun getTodos(
         @Parameter(hidden = true)

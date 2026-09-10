@@ -49,6 +49,46 @@ class AssignmentContentExtractorTest {
     }
 
     @Test
+    fun `extractAttachmentLinks normalizes Canvas file links to absolute download URLs`() {
+        val payload =
+            AssignmentAnalysisPayload(
+                courseId = 44383L,
+                assignmentId = 10L,
+                assignmentHtml =
+                    """
+                    <a href="https://canvas.ssu.ac.kr/courses/44383/files/4322266/download?wrap=1"
+                       data-api-endpoint="https://canvas.ssu.ac.kr/api/v1/courses/44383/files/4322266">project#2-1.zip</a>
+                    <a href="/files/4550358/download?wrap=1">guide.pdf</a>
+                    <a href="https://canvas.ssu.ac.kr/courses/99999/files/7/download">other-course.pdf</a>
+                    <a href="https://evil.example.com/files/8/download">evil</a>
+                    """.trimIndent(),
+            )
+
+        val links = extractor.extractAttachmentLinks(payload)
+
+        assertEquals(
+            listOf(
+                "https://canvas.ssu.ac.kr/courses/44383/files/4322266/download",
+                "https://canvas.ssu.ac.kr/courses/44383/files/4550358/download",
+            ),
+            links,
+        )
+        verify(exactly = 0) { lmsCanvasClient.createSession(any()) }
+    }
+
+    @Test
+    fun `extractAttachmentLinks returns empty list when assignment has no file links`() {
+        val payload =
+            AssignmentAnalysisPayload(
+                courseId = 44383L,
+                assignmentId = 10L,
+                assignmentHtml = "<p>과제 설명만 있는 과제</p>",
+            )
+
+        assertEquals(emptyList(), extractor.extractAttachmentLinks(payload))
+    }
+
+    @Test
     fun `extract requires LMS session when file links exist`() {
         val payload =
             AssignmentAnalysisPayload(
