@@ -51,6 +51,8 @@ class AssignmentAnalysisPreparationService(
         )
     }
 
+    fun extractAttachmentLinks(payload: AssignmentAnalysisPayload): List<String> = contentExtractor.extractAttachmentLinks(payload)
+
     private fun sha256(value: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
         return digest.joinToString("") { "%02x".format(it) }
